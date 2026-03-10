@@ -1,0 +1,22 @@
+# Colcon build artifacts
+build/
+install/
+log/
+
+# Ignore local workspace install artifacts inside src (sometimes created by scripts)
+/src/*/build/
+/src/*/install/
+/src/*/log/
+
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Mac
+.DS_Store
+
+# Temporary
+*.swp
