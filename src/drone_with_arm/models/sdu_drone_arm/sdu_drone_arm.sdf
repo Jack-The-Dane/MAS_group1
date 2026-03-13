@@ -169,7 +169,7 @@
     </link>
     
     <joint name='end_effector_joint' type='fixed'>
-      <pose relative_to='link2'>0 0 0.15 0 0 0</pose>
+      <pose relative_to='link2'>0 0 0.09 0 0 0</pose>
       <parent>link2</parent>
       <child>end_effector_link</child>
     </joint>
