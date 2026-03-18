@@ -105,8 +105,9 @@
     </joint>
 
     <link name='link1'>
-      <pose relative_to='joint1'>0 0 0.095 0 0 0</pose>
-      <!-- <pose relative_to='joint1'>0 0 0.0 0 1.57079632679 0</pose> -->
+      <!-- <pose relative_to='joint1'>0 0 0.095 0 0 0</pose> -->
+      <!-- <pose relative_to='joint1'>0 0 0.095 0 1.48 0</pose> -->
+      <pose relative_to='joint1'>0 0 0.005 0 1.48 0</pose>
       <inertial>
         <mass>0.0001</mass>
         <inertia>
@@ -119,6 +120,7 @@
         </inertia>
       </inertial>
       <visual name='link1_visual'>
+        <pose>0 0 0.095 0 0 0</pose> 
         <geometry>
           <box>
             <size> 0.03 0.03 0.19 </size>
@@ -128,7 +130,8 @@
     </link>
 
     <joint name='joint2' type='revolute'>
-      <pose relative_to='link1'>0 0 0.075 0 0 0</pose>
+      <!-- <pose relative_to='link1'>0 0 0.075 0 0 0</pose> -->
+      <pose relative_to='link1'>0 0 0.175 0 -2.96 0</pose>
       <parent>link1</parent>
       <child>link2</child>
       <axis>
@@ -147,7 +150,7 @@
     </joint>
 
     <link name='link2'>
-      <pose relative_to='joint2'>0 0.03 0.065 0 0 0</pose>
+      <pose relative_to='joint2'>0 0.03 0.075 0 0 0</pose>
       <inertial>
         <mass>0.0001</mass>
         <inertia>
@@ -187,6 +190,18 @@
           <izz>0.000001</izz>
         </inertia>
       </inertial>
+      <visual name='ee_marker'>
+      <geometry>
+        <sphere>
+          <radius>0.01</radius>
+        </sphere>
+      </geometry>
+       <material>
+        <ambient>0 1 1 1</ambient>
+        <diffuse>0 1 1 1</diffuse>
+        <emissive>0 1 1 1</emissive>
+      </material>
+    </visual>
     </link>
 
     <!-- FIXED JOINT attaching arm to drone -->

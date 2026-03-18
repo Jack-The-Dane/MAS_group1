@@ -21,8 +21,17 @@ class MinimalPublisher(Node):
         self.t = 0.0
         self.timer = self.create_timer(self.dt, self.timer_callback)
         
-        self.q1 = np.deg2rad(85)
-        self.q2 = np.deg2rad(-170)
+        # self.q1 = np.deg2rad(85)
+        # self.q2 = np.deg2rad(-170)
+        # self.q1 = np.deg2rad(-70)
+        # self.q2 = np.deg2rad(100)
+        self.q1 = np.deg2rad(0) # init 
+        self.q2 = np.deg2rad(0) # init
+
+        self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
+        self.null_q2 = np.deg2rad(110) 
+
+
         self.psi = 0.0
 
         self.x = 0.0
@@ -164,6 +173,7 @@ class MinimalPublisher(Node):
 
     def timer_callback(self):
         # print("implement wait for OFFBOARD mode in topic /mavros/state/mode")
+        # print("Fix link1 rotates around center!!!!!!!!")
         # print("mode", self.mode)
         # print("armed", self.armed)
         if self.mode != "OFFBOARD" or not self.armed:
@@ -234,6 +244,8 @@ class MinimalPublisher(Node):
 
         elif self.state == "GO_HOME":
             x_des = self.start_pos
+            self.null_q1 = 0
+            self.null_q2 = 0
 
         error = x_des - np.array([self.x_ee, self.y_ee, self.z_ee])
         k = 0.2
@@ -251,9 +263,11 @@ class MinimalPublisher(Node):
         #     error_z * k
         # ])
 
+
+
         error_yaw = 0.0 - self.yaw
-        error_q1 = 0.2 - self.q1
-        error_q2 = 0.3 - self.q2
+        error_q1 = self.null_q1 - self.q1
+        error_q2 = self.null_q2 - self.q2
         k_n = 0.2
         v = np.array([
             0, 0, 0, 
