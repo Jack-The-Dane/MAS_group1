@@ -1,52 +1,80 @@
-import rclpy
-from read_write_test import ControlMotor
-from rclpy.node import Node
+#!/usr/bin/env python3
 
-from std_msgs.msg import String
+import rclpy
+from read_write_test import ControlMotors
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from std_msgs.msg import Float64MultiArray
+
 
 
 class MinimalSubscriber(Node):
 
     def __init__(self):
-        super().__init__('minimal_subscriber')
-        self.subscription = self.create_subscription(
-            String,
-            'topic',
-            self.listener_callback,
-            10)
-        self.subscription  # prevent unused variable warning
+        super().__init__('control_motors')
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10
+        )
 
-        port_aksel_pc = "/dev/ttyUSB0"
-        self.motor1 = ControlMotor(1, port_aksel_pc)
+        # subsribe to armcontroller
+        self.armController_subscription = self.create_subscription(
+            Float64MultiArray,
+            'arm_controller/commands',
+            self.armController_callback,
+            qos_profile
+        )
 
+        self.gimbalController_subscription = self.create_subscription(
+            Float64MultiArray,
+            '/gimbal_controller/commands',
+            self.gimbalController_callback,
+            10
+        )
 
+        communication_port = "/dev/ttyUSB0"
+        self.motors = ControlMotors([1,2,3,4], communication_port)
 
-
-    def listener_callback(self, msg):
-
-        while True:
-            try:
-                target_position = int(input("Enter target position (0 ~ 4095, -1 to exit): "))
-            except ValueError:
-                print("Please enter an integer.")
-                continue
-
-            if target_position == -1:
-                break
-            elif target_position < 0 or target_position > 4095:
-                print("Position must be between 0 and 4095.")
-                continue
-
-            self.motor1.set_position(target_position)
-
-            while True:
-                present_position = self.motor1.get_position()
-                print(f"Current Position: {present_position}")
-                if abs(target_position - present_position) <= 10:
-                    break
+        self.current_targets = [2048, 2048, 2048, 2048]
 
 
-        self.get_logger().info('I heard: "%s"' % msg.data)
+
+    def armController_callback(self, msg):
+        #convert to degrees
+        arm_motor_1 = 180/3.14 * msg.data[0]
+        arm_motor_2 = 180/3.14 * msg.data[1]
+
+        # plus 2047 to center in the middle
+        # times 360/4096 to convert degress to positon bc 4096 [pulse/rev]
+        arm_motor_1 = int(2048 + arm_motor_1 * 4096 / 360)  # motor 1
+        arm_motor_2 = int(2048 + arm_motor_2 * 4096 / 360) # motor 2
+
+        #limit values to what it accepts
+        self.current_targets[0] = max(0, min(4095, arm_motor_1))
+        self.current_targets[1] = max(0, min(4095, arm_motor_2))
+        self.current_targets[0] = 10
+
+
+        print("curr target: ", self.current_targets)
+
+        self.motors.set_position(self.current_targets)
+
+
+    def gimbalController_callback(self, msg):
+        #Explination above
+        gimbal_motor_3 = 180/3.14 * msg.data[0]
+        gimbal_motor_4 = 180/3.14 * msg.data[1]
+
+        gimbal_motor_3 = int(2048 + gimbal_motor_3 * 4096 / 360)   # motor 3
+        gimbal_motor_4 = int(2048 + gimbal_motor_4 * 4096 / 360)   # motor 4
+
+        self.current_targets[2] = max(0, min(4095, gimbal_motor_3))
+        self.current_targets[3] = max(0, min(4095, gimbal_motor_4))
+
+        self.motors.set_position(self.current_targets)
+
+    
 
 
 def main(args=None):
@@ -56,9 +84,6 @@ def main(args=None):
 
     rclpy.spin(minimal_subscriber)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
     minimal_subscriber.destroy_node()
     rclpy.shutdown()
 

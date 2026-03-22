@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 
-from dynamixel_sdk import PortHandler, PacketHandler, COMM_SUCCESS, GroupBulkRead, GroupBulkWrite
+from DynamixelSDK.python.src.dynamixel_sdk import *
 
 
 
 class ControlMotors:
-    def __init__(self, motor_id1, motor_id2, port):
-        self.motor_id1 = motor_id1
-        self.motor_id2 = motor_id2
-
+    def __init__(self, motor_ids, port):
+        self.motor_ids = motor_ids
 
         self.portHandler = PortHandler(port)
         self.packetHandler = PacketHandler(2.0) #Protocol 2.0
 
+        #Constants needed
         self.goal_position_address = 116
         self.present_position_address = 132
         self.torque_on_address = 64
+        self.goal_position_length = 4
+        self.present_position_length = 4
 
         self.groupBulkWrite = GroupBulkWrite(self.portHandler, self.packetHandler)
         self.groupBulkRead = GroupBulkRead(self.portHandler, self.packetHandler)
@@ -36,71 +37,136 @@ class ControlMotors:
             exit()
 
         #Check that the connection is working
-        dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(
-            self.portHandler, self.motor_id1, self.torque_on_address, 1) #64 is the address that enables torque (aka movement)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-        else:
-            print("Dynamixel#", self.motor_id1 ," has been successfully connected")
-
-        #Check that the connection is working
-        dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(
-            self.portHandler, self.motor_id2, self.torque_on_address, 1) #64 is the address that enables torque (aka movement)
-        if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-        else:
-            print("Dynamixel#", self.motor_id2 ," has been successfully connected")
+        for motor_id in motor_ids:
+            communication_result, error = self.packetHandler.write1ByteTxRx(self.portHandler, motor_id, self.torque_on_address, 1) 
+            if communication_result != COMM_SUCCESS:
+                print("%s" % self.packetHandler.getTxRxResult(communication_result))
+            elif error != 0:
+                print("%s" % self.packetHandler.getRxPacketError(error))
+            else:
+                print("Dynamixel motor", motor_id ," is connected")
 
 
-    def set_position(self, target_position):
-        dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(
-            self.portHandler, self.motor_id, self.goal_position_address, target_position) #116 is the address for setting target position
+        #Enable torque / aka turn on movement
+        for motor_id in self.motor_ids:
+            communication_result, error = self.packetHandler.write1ByteTxRx(self.portHandler, motor_id, self.torque_on_address, 1)
+            if error != 0:
+                print("enable torque failed for motor ", motor_id)
+
+
+        #Add motors to bulk read
+        for motor_id in motor_ids:
+            addparam_result = self.groupBulkRead.addParam(motor_id, self.present_position_address, self.goal_position_length)
+            if addparam_result != True:
+                print("groupBulkRead addparam failed for ", motor_id)
+
+
+
+
+    def set_position(self, target_positions):
+        self.groupBulkWrite.clearParam()
+
+        #Set target positon for motors
+        for motor_id, target_position in zip(self.motor_ids, target_positions):
+            param_goal_position = [
+                DXL_LOBYTE(DXL_LOWORD(target_position)),
+                DXL_HIBYTE(DXL_LOWORD(target_position)),
+                DXL_LOBYTE(DXL_HIWORD(target_position)),
+                DXL_HIBYTE(DXL_HIWORD(target_position)),
+            ]
+
+            dxl_addparam_result = self.groupBulkWrite.addParam(
+                motor_id,
+                self.goal_position_address,
+                self.goal_position_length,
+                param_goal_position
+            )
+
+        #Write in bulk
+        dxl_comm_result = self.groupBulkWrite.txPacket()
         if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
+            print(self.packetHandler.getTxRxResult(dxl_comm_result))
+
+        self.groupBulkWrite.clearParam()
+
+
 
     def get_position(self):
-        present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(
-            self.portHandler, self.motor_id, self.present_position_address) #132 is the address for reading position
+        #temp variable for storing positions
+        positions = []
+
+        #Read
+        dxl_comm_result = self.groupBulkRead.txRxPacket()
         if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-        return present_position
+            print(self.packetHandler.getTxRxResult(dxl_comm_result))
+            return positions
+
+        #Read all positions
+        for motor_id in self.motor_ids:
+            #Read position
+            position = self.groupBulkRead.getData(
+                motor_id,
+                self.present_position_address,
+                self.present_position_length
+            )
+
+            #append position to list/array
+            positions.append(position)
+
+
+        return positions
+
+
 
     def close(self):
-        self.packetHandler.write1ByteTxRx(
-            self.portHandler, self.motor_id, 64, 0)
+        for motor_id in self.motor_ids:
+            self.packetHandler.write1ByteTxRx(
+                self.portHandler, motor_id, self.torque_on_address, 0
+            )
         self.portHandler.closePort()
 
 
-port_aksel_pc = "/dev/ttyUSB0"
-motor1 = ControlMotors(1, 2, port_aksel_pc)
 
-while True:
-    try:
-        target_position = int(input("Enter target position (0 ~ 4095, -1 to exit): "))
-    except ValueError:
-        print("Please enter an integer.")
-        continue
+# #Test script below
+# port_aksel_pc = "/dev/ttyUSB0"
+# motor_ids_test = [1, 2, 3, 4]
+# motors = ControlMotors(motor_ids_test, port_aksel_pc)
 
-    if target_position == -1:
-        break
-    elif target_position < 0 or target_position > 4095:
-        print("Position must be between 0 and 4095.")
-        continue
 
-    motor1.set_position(target_position)
+# while True:
+#     targets = []
 
-    while True:
-        present_position = motor1.get_position()
-        print(f"Current Position: {present_position}")
-        if abs(target_position - present_position) <= 10:
-            break
+#     for motor_id in motor_ids_test:
+#         target_position = int(
+#             input(f"Enter target position for motor {motor_id} (0 ~ 4095) or -1 to exit: ")
+#         )
 
-motor1.close()
+#         if target_position == -1:
+#             motors.close()
+#             exit()
+
+#         if target_position < 0 or target_position > 4095:
+#             print("Position must be between 0 and 4095.")
+#             targets = []
+#             break
+
+#         targets.append(target_position)
+
+#     if len(targets) != len(motor_ids_test):
+#         continue
+
+#     motors.set_position(targets)
+
+#     while True:
+#         positions = motors.get_position()
+
+#         if len(positions) != len(motor_ids_test):
+#             print("Failed to read all motor positions.")
+#             continue
+
+#         for motor_id, position in zip(motor_ids_test, positions):
+#             print(f"Motor {motor_id} Position: {position}")
+
+#         if all(abs(target - position) <= 10 for target, position in zip(targets, positions)):
+#             print("All motors reached target.")
+#             break
