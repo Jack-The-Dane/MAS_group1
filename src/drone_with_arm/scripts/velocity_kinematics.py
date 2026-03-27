@@ -17,42 +17,54 @@ class MinimalPublisher(Node):
         self.pos_publisher_ = self.create_publisher(PoseStamped, '/mavros/setpoint_position/local', 10)
 
 
+        # Time parameters
         self.dt = 0.02  # 50 Hz (smooth)
         self.t = 0.0
         self.timer = self.create_timer(self.dt, self.timer_callback)
+
+
+        # Links lengths
+        self.link1 = 0.3
+        self.link2 = 0.3
         
+
+        # Joint angles
         # self.q1 = np.deg2rad(85)
         # self.q2 = np.deg2rad(-170)
         # self.q1 = np.deg2rad(-70)
         # self.q2 = np.deg2rad(100)
-        self.q1 = np.deg2rad(0) # init 
-        self.q2 = np.deg2rad(0) # init
+        self.q1 = np.deg2rad(0) # initial joint angles
+        self.q2 = np.deg2rad(0) # init 
 
         self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
         self.null_q2 = np.deg2rad(110) 
+                
 
-
-        self.psi = 0.0
-
+        # Drone attitude 
         self.x = 0.0
         self.y = 0.0
         self.z = 1.0
         self.yaw = 0.0
 
+
+        # End-effector position
         self.x_ee = 0.0
         self.y_ee = 0.0
         self.z_ee = 0.0
 
+
+        #State machine
         self.mode = ""
         self.armed = False
+        self.state = "WAIT"
+        self.state_start_time = self.get_clock().now().seconds_nanoseconds()[0]
 
 
-        self.start_pos = np.array([0.0, 0.0, 1.5])
+        # Home positions, targets and current target
+        self.home_pos = np.array([0.0, 0.0, 2.5])
         self.targets = [None, None, None, None]
         self.current_target = 0
 
-        self.state = "WAIT"
-        self.state_start_time = self.get_clock().now().seconds_nanoseconds()[0]
 
         # subsribe to end-effector pose
         self.ee_subscription = self.create_subscription(
@@ -171,134 +183,114 @@ class MinimalPublisher(Node):
         self.mode = msg.mode
         self.armed = msg.armed
 
-    def timer_callback(self):
-        # print("implement wait for OFFBOARD mode in topic /mavros/state/mode")
-        # print("Fix link1 rotates around center!!!!!!!!")
-        # print("mode", self.mode)
-        # print("armed", self.armed)
-        if self.mode != "OFFBOARD" or not self.armed:
-            msg = PoseStamped()
-            msg.pose.position.x = 0.0
-            msg.pose.position.y = 0.0
-            msg.pose.position.z = 0.0
-            self.pos_publisher_.publish(msg)
-            # print("0,0,0")
-            msg = Float64MultiArray()
-            msg.data = [self.q1, self.q2]
-            
-            self.publisher_.publish(msg)
-            return
-        # print("im here")
-
-        current_time = self.get_clock().now().nanoseconds * 1e-9
-
-        if self.state == "WAIT":
-            x_des = self.start_pos
-            
-            if current_time - self.state_start_time > 5.0:   # wait 10 seconds
-                self.state = "GO_TO_TARGET_HIGH"
-                # self.state_start_time = current_time
-                print("GO TO TARGET_HIGH")
-
-
-        elif self.state == "GO_TO_TARGET_HIGH":
-
-            target = self.targets[self.current_target]
-            if target is None:
-                return
-
-            x_des = target + np.array([0.0, 0.0, 0.6])  # 20 cm above
-            # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
-            
-            if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.1:
-                self.state = "GO_TO_TARGET_LOW"
-                print("GO TO TARGET LOW")
-                
-        elif self.state == "GO_TO_TARGET_LOW":
-            
-            target = self.targets[self.current_target]
-
-            x_des = target + np.array([0.0, 0.0, 0.2])
-            
-            if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.05:
-                self.state_start_time = current_time
-                self.state = "HOVER_TARGET"
-
-        elif self.state == "HOVER_TARGET":
-
-            target = self.targets[self.current_target]
-            
-            x_des = target + np.array([0.0, 0.0, 0.2])
-            # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
-
-            if current_time - self.state_start_time > 10.0:
-                self.current_target += 1
-
-                if self.current_target >= 4:
-                    self.state = "GO_HOME"
-                    print("GO HOME")
-                else:
-                    self.state = "GO_TO_TARGET_HIGH"
-                    print("GO TO TARGET HIGH")
-
-
-        elif self.state == "GO_HOME":
-            x_des = self.start_pos
-            self.null_q1 = 0
-            self.null_q2 = 0
-
+    
+    def desired_position_velocity(self, x_des, k=0.2):
         error = x_des - np.array([self.x_ee, self.y_ee, self.z_ee])
-        k = 0.2
         p_des_vel = k * error
-
-        # error_x = -1.0 - self.x_ee 
-        # error_y = -1.0 - self.y_ee
-        # error_z = 1.5 - self.z_ee
-     
-        # k = 0.2
-
-        # p_des_vel = np.array([
-        #     error_x * k,
-        #     error_y * k,
-        #     error_z * k
-        # ])
+        return p_des_vel
 
 
 
-        error_yaw = 0.0 - self.yaw
-        error_q1 = self.null_q1 - self.q1
-        error_q2 = self.null_q2 - self.q2
-        k_n = 0.2
+    def null_space_armJoint_and_yaw(self, des_joints, des_yaw, des_pos, k_null_pos, k_null_yaw, k_null_joints, current_target):
+        #ide:
+        #for target in self.targets
+            #dist target 
+            #if dist < 1m:
+                #k_null_pos = 0.2
+                #not_des_pos = -target_xyz 
+
+        self.targets
+        
+        # Calculate error for yaw and joints (q1, q2)
+        error_x = des_pos[0] - self.x
+        error_y = des_pos[1] - self.y
+        error_z = des_pos[2] - self.z
+        error_yaw = des_yaw[3] - self.yaw
+        error_q1 = des_joints[0] - self.q1
+        error_q2 = des_joints[1] - self.q2
+
         v = np.array([
-            0, 0, 0, 
-            0*error_yaw * k_n,
-            error_q1 * k_n,
-            error_q2 * k_n
+            error_x * k_null_pos,
+            error_y * k_null_pos, 
+            error_z * k_null_pos, 
+            error_yaw * k_null_yaw,
+            error_q1 * k_null_joints,
+            error_q2 * k_null_joints
+        ])
+        return v
+
+    def null_space_armJoint_and_yaw1(
+        self,
+        des_yaw,
+        des_joints,
+        k_null_yaw,
+        k_null_joints,
+        current_target,
+        repulsion_radius=1.0,
+        k_repulsion=0.3
+    ):
+        
+        current_pos = np.array([self.x, self.y, self.z])
+
+        # --- Pure repulsion in position ---
+        repulsion = np.zeros(3)
+
+        for i, target in enumerate(self.targets):
+            if i == current_target or i == current_target -1:
+                continue  # skip active target
+
+            target_pos = np.array(target)
+            diff = current_pos - target_pos
+            dist = np.linalg.norm(diff)
+
+            if dist < repulsion_radius and dist > 1e-6:
+                direction = diff / dist  # unit vector AWAY
+
+                repulsion += k_repulsion * direction
+                print("dist: ", dist)
+                print("repulsion: ", repulsion)
+
+        # --- Yaw + joint attraction ---
+        error_yaw = des_yaw - self.yaw
+        error_q1 = des_joints[0] - self.q1
+        error_q2 = des_joints[1] - self.q2
+
+        v = np.array([
+            repulsion[0],
+            repulsion[1],
+            abs(repulsion[2]),
+            error_yaw * k_null_yaw,
+            error_q1 * k_null_joints,
+            error_q2 * k_null_joints
         ])
 
-        l1 = 0.3
-        l2 = 0.3
-        
+        return v
+
+
+    def mobile_jacobian(self):
+        #Links
+        l1 = self.link1
+        l2 = self.link2
+
+        # For J_arm:
         a1 = -l1*math.sin(self.q1) - l2*math.sin(self.q1+self.q2)
         a2 = -l2*math.sin(self.q1+self.q2)
         b1 =  l1*math.cos(self.q1) + l2*math.cos(self.q1+self.q2)
         b2 =  l2*math.cos(self.q1+self.q2)
+
+        #For J_base:
         ry = l1 * math.cos(self.q1) + l2 * math.cos(self.q1 + self.q2)
 
-        # mobile Jacobian elements
-        # J11 = 1; J12 = 0; J13 = 0
-        # J21 = 0; J22 = 1; J23 = 0
-        # J31 = 0; J32 = 0; J33 = 1
+        # "read" current yaw angle of drone
+        psi = self.yaw
 
-        self.psi = self.yaw
+        J14 = - math.cos(psi) * ry
+        J15 = -math.sin(psi)*a1
+        J16 = -math.sin(psi)*a2
 
-        J14 = - math.cos(self.psi) * ry
-        J15 = -math.sin(self.psi)*a1
-        J16 = -math.sin(self.psi)*a2
-
-        J24 = - math.sin(self.psi) * ry
-        J25 = math.cos(self.psi)*a1
-        J26 = math.cos(self.psi)*a2
+        J24 = - math.sin(psi) * ry
+        J25 = math.cos(psi)*a1
+        J26 = math.cos(psi)*a2
 
         # J34 = 0
         # J35 = b1
@@ -310,13 +302,10 @@ class MinimalPublisher(Node):
             [0, 0, 1, 0,   b1,  b2]
         ])
 
-        J_pinv = J.T @ np.linalg.inv(J @ J.T)
+        return J
+    
 
-        I = np.eye(6)
-
-        q_dot = J_pinv @ p_des_vel + (I - J_pinv @ J) @ v
-
-        
+    def publish_q_dot(self, q_dot):
         self.q1 += q_dot[4] * self.dt
         self.q2 += q_dot[5] * self.dt
         
@@ -348,6 +337,119 @@ class MinimalPublisher(Node):
 
         self.pos_publisher_.publish(msg)
 
+
+
+
+    def timer_callback(self):
+        # print("implement wait for OFFBOARD mode in topic /mavros/state/mode")
+        # print("Fix link1 rotates around center!!!!!!!!")
+        # print("mode", self.mode)
+        # print("armed", self.armed)
+
+        #State machine controlling the drone
+        if self.mode != "OFFBOARD" or not self.armed:
+            msg = PoseStamped()
+            msg.pose.position.x = 0.0
+            msg.pose.position.y = 0.0
+            msg.pose.position.z = 0.0
+            self.pos_publisher_.publish(msg)
+            # print("0,0,0")
+            msg = Float64MultiArray()
+            msg.data = [self.q1, self.q2]
+            
+            self.publisher_.publish(msg)
+            return
+        # print("im here")
+
+        current_time = self.get_clock().now().nanoseconds * 1e-9
+
+        if self.state == "WAIT":
+            x_des = self.home_pos
+            q_des = (0, 0)
+            
+            if current_time - self.state_start_time > 5.0:   # wait 10 seconds
+                self.state = "GO_TO_TARGET_HIGH"
+                # self.state_start_time = current_time
+                print("GO TO TARGET_HIGH")
+
+
+        elif self.state == "GO_TO_TARGET_HIGH":
+
+            target = self.targets[self.current_target]
+            if target is None:
+                return
+
+            x_des = target + np.array([0.0, 0.0, 0.6])  # 20 cm above
+            q_des = (0, 0)
+
+            # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
+            
+            if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.1:
+                self.state = "GO_TO_TARGET_LOW"
+                print("GO TO TARGET LOW")
+                
+        elif self.state == "GO_TO_TARGET_LOW":
+            
+            target = self.targets[self.current_target]
+
+            x_des = target + np.array([0.0, 0.0, 0.2])
+            q_des = (np.deg2rad(-60), np.deg2rad(110))
+
+            
+            
+            if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.05:
+                self.state_start_time = current_time
+                self.state = "HOVER_TARGET"
+
+        elif self.state == "HOVER_TARGET":
+
+            target = self.targets[self.current_target]
+            
+            x_des = target + np.array([0.0, 0.0, 0.2])
+            q_des = (np.deg2rad(-60), np.deg2rad(110))
+
+            # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
+
+            if current_time - self.state_start_time > 10.0:
+                self.current_target += 1
+
+                if self.current_target >= 4:
+                    self.state = "GO_HOME"
+                    print("GO HOME")
+                else:
+                    self.state = "GO_TO_TARGET_HIGH"
+                    print("GO TO TARGET HIGH")
+
+
+        elif self.state == "GO_HOME":
+            x_des = self.home_pos
+            q_des = (0, 0)
+            self.null_q1 = 0
+            self.null_q2 = 0
+
+
+        #Calculate desired movement velocity
+        p_des_vel = self.desired_position_velocity(x_des, k=0.2)
+
+        # Null space (joint 1, joint 2 and yaw)
+        # v = self.null_space_armJoint_and_yaw1(des_yaw=0.0, des_joints=(self.null_q1, self.null_q2), k_null_yaw=0, k_null_joints=0.2, current_target=self.current_target, k_repulsion=15)
+        v = self.null_space_armJoint_and_yaw1(des_yaw=0.0, des_joints=q_des, k_null_yaw=0, k_null_joints=0.8, current_target=self.current_target, k_repulsion=15)
+
+
+        # Jacobian
+        J = self.mobile_jacobian()
+
+        # Moore Penrose Pseudoinverse of the jacobian J
+        J_pinv = J.T @ np.linalg.inv(J @ J.T)
+
+        # Calculate q_dot using Jacobian J and null space (desired joints & yaw)
+        I = np.eye(6)
+        q_dot = J_pinv @ p_des_vel + (I - J_pinv @ J) @ v
+
+        # Publish position commands and joint commands
+        self.publish_q_dot(q_dot)
+
+        # Increment  time
         self.t += self.dt  # speed (bigger = faster)
 
 
