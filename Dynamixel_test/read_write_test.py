@@ -15,6 +15,8 @@ class ControlMotors:
         self.goal_position_address = 116
         self.present_position_address = 132
         self.torque_on_address = 64
+        self.operating_mode_address = 11
+        self.extended_position_mode = 4
         self.goal_position_length = 4
         self.present_position_length = 4
 
@@ -38,13 +40,19 @@ class ControlMotors:
 
         #Check that the connection is working
         for motor_id in motor_ids:
-            communication_result, error = self.packetHandler.write1ByteTxRx(self.portHandler, motor_id, self.torque_on_address, 1) 
+            self.packetHandler.write1ByteTxRx(self.portHandler, motor_id, self.torque_on_address, 0)
+            communication_result, error = self.packetHandler.write1ByteTxRx(
+                self.portHandler,
+                motor_id,
+                self.operating_mode_address,
+                self.extended_position_mode,
+            )
             if communication_result != COMM_SUCCESS:
                 print("%s" % self.packetHandler.getTxRxResult(communication_result))
             elif error != 0:
                 print("%s" % self.packetHandler.getRxPacketError(error))
             else:
-                print("Dynamixel motor", motor_id ," is connected")
+                print("Dynamixel motor", motor_id, "is set to extended position mode")
 
 
         #Enable torque / aka turn on movement
@@ -127,46 +135,50 @@ class ControlMotors:
 
 
 
-# #Test script below
-# port_aksel_pc = "/dev/ttyUSB0"
-# motor_ids_test = [1, 2, 3, 4]
-# motors = ControlMotors(motor_ids_test, port_aksel_pc)
+#Test script below
+port_aksel_pc = "/dev/ttyUSB0"
+motor_ids_test = [1, 2, 3, 4]
+motors = ControlMotors(motor_ids_test, port_aksel_pc)
 
 
-# while True:
-#     targets = []
+while True:
+    targets = []
+    print(motors.get_position())
 
-#     for motor_id in motor_ids_test:
-#         target_position = int(
-#             input(f"Enter target position for motor {motor_id} (0 ~ 4095) or -1 to exit: ")
-#         )
 
-#         if target_position == -1:
-#             motors.close()
-#             exit()
+    for motor_id in motor_ids_test:
+        target_position = int(
+            input(f"Enter target position for motor {motor_id} (0 ~ 4095) or -1 to exit: ")
+        )
 
-#         if target_position < 0 or target_position > 4095:
-#             print("Position must be between 0 and 4095.")
-#             targets = []
-#             break
+        if target_position == -1:
+            motors.close()
+            exit()
 
-#         targets.append(target_position)
+        if target_position < -4000 or target_position > 4095:
+            print("Position must be between 0 and 4095.")
+            targets = []
+            break
 
-#     if len(targets) != len(motor_ids_test):
-#         continue
+        targets.append(target_position)
 
-#     motors.set_position(targets)
+    if len(targets) != len(motor_ids_test):
+        continue
 
-#     while True:
-#         positions = motors.get_position()
+    motors.set_position(targets)
 
-#         if len(positions) != len(motor_ids_test):
-#             print("Failed to read all motor positions.")
-#             continue
+    print(motors.get_position())
 
-#         for motor_id, position in zip(motor_ids_test, positions):
-#             print(f"Motor {motor_id} Position: {position}")
+    # while True:
+    #     positions = motors.get_position()
 
-#         if all(abs(target - position) <= 10 for target, position in zip(targets, positions)):
-#             print("All motors reached target.")
-#             break
+    #     if len(positions) != len(motor_ids_test):
+    #         print("Failed to read all motor positions.")
+    #         continue
+
+    #     for motor_id, position in zip(motor_ids_test, positions):
+    #         print(f"Motor {motor_id} Position: {position}")
+
+    #     if all(abs(target - position) <= 15 for target, position in zip(targets, positions)):
+    #         print("All motors reached target.")
+    #         break

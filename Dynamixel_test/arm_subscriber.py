@@ -36,7 +36,7 @@ class MinimalSubscriber(Node):
         communication_port = "/dev/ttyUSB0"
         self.motors = ControlMotors([1,2,3,4], communication_port)
 
-        self.current_targets = [2048, 2048, 2048, 2048]
+        self.current_targets = [1200, 1900, 2048, 2048]
 
 
 
@@ -51,9 +51,8 @@ class MinimalSubscriber(Node):
         arm_motor_2 = int(2048 + arm_motor_2 * 4096 / 360) # motor 2
 
         #limit values to what it accepts
-        self.current_targets[0] = max(0, min(4095, arm_motor_1))
-        self.current_targets[1] = max(0, min(4095, arm_motor_2))
-        self.current_targets[0] = 10
+        self.current_targets[0] = 1200#max(0, min(4095, arm_motor_1))
+        self.current_targets[1] = 1900#max(0, min(4095, arm_motor_2))
 
 
         print("curr target: ", self.current_targets)
@@ -69,8 +68,8 @@ class MinimalSubscriber(Node):
         gimbal_motor_3 = int(2048 + gimbal_motor_3 * 4096 / 360)   # motor 3
         gimbal_motor_4 = int(2048 + gimbal_motor_4 * 4096 / 360)   # motor 4
 
-        self.current_targets[2] = max(0, min(4095, gimbal_motor_3))
-        self.current_targets[3] = max(0, min(4095, gimbal_motor_4))
+        self.current_targets[2] = 2048#max(0, min(4095, gimbal_motor_3))
+        self.current_targets[3] = 2048#max(0, min(4095, gimbal_motor_4))
 
         self.motors.set_position(self.current_targets)
 
