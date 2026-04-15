@@ -189,37 +189,7 @@ class MinimalPublisher(Node):
         p_des_vel = k * error
         return p_des_vel
 
-
-
-    def null_space_armJoint_and_yaw(self, des_joints, des_yaw, des_pos, k_null_pos, k_null_yaw, k_null_joints, current_target):
-        #ide:
-        #for target in self.targets
-            #dist target 
-            #if dist < 1m:
-                #k_null_pos = 0.2
-                #not_des_pos = -target_xyz 
-
-        self.targets
-        
-        # Calculate error for yaw and joints (q1, q2)
-        error_x = des_pos[0] - self.x
-        error_y = des_pos[1] - self.y
-        error_z = des_pos[2] - self.z
-        error_yaw = des_yaw[3] - self.yaw
-        error_q1 = des_joints[0] - self.q1
-        error_q2 = des_joints[1] - self.q2
-
-        v = np.array([
-            error_x * k_null_pos,
-            error_y * k_null_pos, 
-            error_z * k_null_pos, 
-            error_yaw * k_null_yaw,
-            error_q1 * k_null_joints,
-            error_q2 * k_null_joints
-        ])
-        return v
-
-    def null_space_armJoint_and_yaw1(
+    def null_space_armJoint_and_yaw(
         self,
         des_yaw,
         des_joints,
@@ -431,9 +401,8 @@ class MinimalPublisher(Node):
         #Calculate desired movement velocity
         p_des_vel = self.desired_position_velocity(x_des, k=0.2)
 
-        # Null space (joint 1, joint 2 and yaw)
-        # v = self.null_space_armJoint_and_yaw1(des_yaw=0.0, des_joints=(self.null_q1, self.null_q2), k_null_yaw=0, k_null_joints=0.2, current_target=self.current_target, k_repulsion=15)
-        v = self.null_space_armJoint_and_yaw1(des_yaw=0.0, des_joints=q_des, k_null_yaw=0, k_null_joints=0.8, current_target=self.current_target, k_repulsion=15)
+        # Null space (joint 1, joint 2 and yaw) and for obstacle avoidance using repulsion
+        v = self.null_space_armJoint_and_yaw(des_yaw=0.0, des_joints=q_des, k_null_yaw=0, k_null_joints=0.8, current_target=self.current_target, k_repulsion=15)
 
 
         # Jacobian
