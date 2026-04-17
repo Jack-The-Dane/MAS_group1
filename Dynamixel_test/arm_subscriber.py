@@ -47,12 +47,12 @@ class MinimalSubscriber(Node):
 
         # plus 2047 to center in the middle
         # times 360/4096 to convert degress to positon bc 4096 [pulse/rev]
-        arm_motor_1 = int(2048 + arm_motor_1 * 4096 / 360)  # motor 1
-        arm_motor_2 = int(2048 + arm_motor_2 * 4096 / 360) # motor 2
+        arm_motor_1 = int(1200 + arm_motor_1 * 4096 / 360)  # motor 1
+        arm_motor_2 = int(1900 + arm_motor_2 * 4096 / 360) # motor 2
 
         #limit values to what it accepts
-        self.current_targets[0] = 1200#max(0, min(4095, arm_motor_1))
-        self.current_targets[1] = 1900#max(0, min(4095, arm_motor_2))
+        self.current_targets[0] = max(0, min(4095, arm_motor_1)) #1200
+        self.current_targets[1] = max(0, min(4095, arm_motor_2)) #1900
 
 
         print("curr target: ", self.current_targets)
@@ -68,8 +68,8 @@ class MinimalSubscriber(Node):
         gimbal_motor_3 = int(2048 + gimbal_motor_3 * 4096 / 360)   # motor 3
         gimbal_motor_4 = int(2048 + gimbal_motor_4 * 4096 / 360)   # motor 4
 
-        self.current_targets[2] = 2048#max(0, min(4095, gimbal_motor_3))
-        self.current_targets[3] = 2048#max(0, min(4095, gimbal_motor_4))
+        self.current_targets[2] = max(0, min(4095, gimbal_motor_3)) #2048
+        self.current_targets[3] = max(0, min(4095, gimbal_motor_4)) #2048
 
         self.motors.set_position(self.current_targets)
 
