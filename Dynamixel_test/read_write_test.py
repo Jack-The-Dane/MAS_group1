@@ -135,39 +135,39 @@ class ControlMotors:
 
 
 
-#Test script below
-port_aksel_pc = "/dev/ttyUSB0"
-motor_ids_test = [1, 2, 3, 4]
-motors = ControlMotors(motor_ids_test, port_aksel_pc)
+# #Test script below
+# port_aksel_pc = "/dev/ttyUSB0"
+# motor_ids_test = [1, 2, 3, 4]
+# motors = ControlMotors(motor_ids_test, port_aksel_pc)
 
 
-while True:
-    targets = []
-    print(motors.get_position())
+# while True:
+#     targets = []
+#     print(motors.get_position())
 
 
-    for motor_id in motor_ids_test:
-        target_position = int(
-            input(f"Enter target position for motor {motor_id} (0 ~ 4095) or -1 to exit: ")
-        )
+#     for motor_id in motor_ids_test:
+#         target_position = int(
+#             input(f"Enter target position for motor {motor_id} (0 ~ 4095) or -1 to exit: ")
+#         )
 
-        if target_position == -1:
-            motors.close()
-            exit()
+#         if target_position == -1:
+#             motors.close()
+#             exit()
 
-        if target_position < -4000 or target_position > 4095:
-            print("Position must be between 0 and 4095.")
-            targets = []
-            break
+#         if target_position < -4000 or target_position > 4095:
+#             print("Position must be between 0 and 4095.")
+#             targets = []
+#             break
 
-        targets.append(target_position)
+#         targets.append(target_position)
 
-    if len(targets) != len(motor_ids_test):
-        continue
+#     if len(targets) != len(motor_ids_test):
+#         continue
 
-    motors.set_position(targets)
+#     motors.set_position(targets)
 
-    print(motors.get_position())
+#     print(motors.get_position())
 
     # while True:
     #     positions = motors.get_position()
