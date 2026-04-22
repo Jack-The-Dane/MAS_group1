@@ -33,12 +33,12 @@ class GimbalNode(Node):
         ####### IMPORTANT #############
         # Test these and find the correct values
         # Hardcoded tuck values
-        self.tuck_pitch = self.deg2rad(90.0)
+        self.tuck_pitch = self.deg2rad(0.0)
         # self.tuck_roll = 0.0
         self.tuck_roll = self.deg2rad(0.0)
 
-        self.declare_parameter('gimbal1_deg', 90.0)
-        self.declare_parameter('gimbal2_deg', 0.0)
+        self.declare_parameter('gimbal1_deg', 0.0)
+        self.declare_parameter('gimbal2_deg', -90.0)
 
         # Modes: "stabilize" or "tuck"
         self.mode = "tuck"
