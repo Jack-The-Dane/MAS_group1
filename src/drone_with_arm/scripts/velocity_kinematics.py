@@ -34,7 +34,7 @@ class MinimalPublisher(Node):
         # self.q2 = np.deg2rad(-170)
         # self.q1 = np.deg2rad(-70)
         # self.q2 = np.deg2rad(100)
-        self.q1 = np.deg2rad(90) # initial joint angles
+        self.q1 = np.deg2rad(-90) # initial joint angles
         self.q2 = np.deg2rad(0) # init 
 
         self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
@@ -332,7 +332,7 @@ class MinimalPublisher(Node):
             msg.data = [self.q1, self.q2] # !!!!!!!!!!!!!!!!!!!!!!!!!!!
             
             self.publisher_.publish(msg)
-
+            
             mode_msg = String()
             mode_msg.data = "tuck"
             self.gimbal_mode_pub.publish(mode_msg)
@@ -439,17 +439,33 @@ class MinimalPublisher(Node):
             self.null_q2 = 0
             if np.linalg.norm(self.home_pos - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.1:
                 print("IM HOME NERDS")
+                self.state_start_time = current_time
+                self.state = "TUCK_ARM"
+
+        elif self.state == "TUCK_ARM":
+            x_des = self.home_pos
+            q_des = (90, 0)
+
+            if current_time - self.state_start_time > 5.0:
+                self.state = "TUCK_GIMBAL"
+                self.state_start_time = current_time
                 print("TUCKING GIMBAL")
-                mode_msg = String()
-                mode_msg.data = "tuck"
-                self.gimbal_mode_pub.publish(mode_msg)
+
+        elif self.state == "TUCK_GIMBAL":
+            mode_msg = String()
+            mode_msg.data = "tuck"
+            self.gimbal_mode_pub.publish(mode_msg)
+
+            x_des = self.home_pos
+            q_des = (np.deg2rad(90),0)
+
+            if current_time - self.state_start_time > 5.0:
                 self.state = "HOME"
-
-
+                print("READY FOR LANDING")
 
         elif self.state == "HOME":
             x_des = self.home_pos
-            q_des = (0, 0)
+            q_des = (90, 0)
 
 
         #Calculate desired movement velocity
