@@ -36,8 +36,8 @@ class MinimalPublisher(Node):
         self.q1 = np.deg2rad(0) # initial joint angles
         self.q2 = np.deg2rad(0) # init 
 
-        self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
-        self.null_q2 = np.deg2rad(110) 
+        self.null_q1 = np.deg2rad(10) # target/nullspace joint angles
+        self.null_q2 = np.deg2rad(10) 
                 
 
         # Drone attitude 
