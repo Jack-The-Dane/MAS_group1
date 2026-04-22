@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-from DynamixelSDK.python.src.dynamixel_sdk import *
-
-
+from DynamixelSDK.dynamixel_sdk import *
 
 class ControlMotors:
     def __init__(self, motor_ids, port):
@@ -136,7 +134,7 @@ class ControlMotors:
 
 
 # #Test script below
-# port_aksel_pc = "/dev/ttyUSB0"
+# port_aksel_pc = "/dev/U2D2"
 # motor_ids_test = [1, 2, 3, 4]
 # motors = ControlMotors(motor_ids_test, port_aksel_pc)
 
@@ -162,12 +160,12 @@ class ControlMotors:
 
 #         targets.append(target_position)
 
-#     if len(targets) != len(motor_ids_test):
-#         continue
+    # if len(targets) != len(motor_ids_test):
+    #     continue
 
-#     motors.set_position(targets)
+    # motors.set_position(targets)
 
-#     print(motors.get_position())
+    # print(motors.get_position())
 
     # while True:
     #     positions = motors.get_position()
