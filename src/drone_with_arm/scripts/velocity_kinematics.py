@@ -2,7 +2,7 @@
 import math
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, String
 import numpy as np
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
@@ -15,6 +15,7 @@ class MinimalPublisher(Node):
         super().__init__('move_arm_in_circle')
         self.publisher_ = self.create_publisher(Float64MultiArray, 'arm_controller/commands', 10)
         self.pos_publisher_ = self.create_publisher(PoseStamped, '/mavros/setpoint_position/local', 10)
+        self.gimbal_mode_pub = self.create_publisher(String, '/gimbal_mode', 10)
 
 
         # Time parameters
@@ -36,8 +37,11 @@ class MinimalPublisher(Node):
         self.q1 = np.deg2rad(0) # initial joint angles
         self.q2 = np.deg2rad(0) # init 
 
-        self.null_q1 = np.deg2rad(10) # target/nullspace joint angles
-        self.null_q2 = np.deg2rad(10) 
+        self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
+        self.null_q2 = np.deg2rad(30) 
+
+        self.null_q1_travel = np.deg2rad(-80)
+        self.null_q2_travel = np.deg2rad(120)
                 
 
         # Drone attitude 
@@ -61,7 +65,7 @@ class MinimalPublisher(Node):
 
 
         # Home positions, targets and current target
-        self.home_pos = np.array([0.0, 0.0, 2.5])
+        self.home_pos = np.array([0.0, 0.0, 3.5])
         self.targets = [None, None, None, None]
         self.current_target = 0
 
@@ -328,6 +332,10 @@ class MinimalPublisher(Node):
             msg.data = [self.q1, self.q2]
             
             self.publisher_.publish(msg)
+
+            mode_msg = String()
+            mode_msg.data = "tuck"
+            self.gimbal_mode_pub.publish(mode_msg)
             return
         # print("im here")
 
@@ -338,9 +346,22 @@ class MinimalPublisher(Node):
             q_des = (0, 0)
             
             if current_time - self.state_start_time > 5.0:   # wait 10 seconds
+                self.state = "UNTUCK_GIMBAL"
+                self.state_start_time = current_time
+                print("UNTUCK GIMBAL")
+
+        elif self.state == "UNTUCK_GIMBAL":
+            mode_msg = String()
+            mode_msg.data = "stabilize"
+            self.gimbal_mode_pub.publish(mode_msg)
+
+
+            x_des = self.home_pos
+            q_des = (0,0)
+
+            if current_time - self.state_start_time > 5.0:
                 self.state = "GO_TO_TARGET_HIGH"
-                # self.state_start_time = current_time
-                print("GO TO TARGET_HIGH")
+                print("GO TO TARGET 1 HIGH")
 
 
         elif self.state == "GO_TO_TARGET_HIGH":
@@ -350,7 +371,8 @@ class MinimalPublisher(Node):
                 return
 
             x_des = target + np.array([0.0, 0.0, 0.6])  # 20 cm above
-            q_des = (0, 0)
+            # q_des = (0, 0)
+            q_des = (self.null_q1_travel, self.null_q2_travel)
 
             # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
             
@@ -363,32 +385,43 @@ class MinimalPublisher(Node):
             target = self.targets[self.current_target]
 
             x_des = target + np.array([0.0, 0.0, 0.2])
-            q_des = (np.deg2rad(-60), np.deg2rad(110))
-
+            # q_des = (np.deg2rad(-60), np.deg2rad(110))
+            q_des = (self.null_q1, self.null_q2)
             
             
             if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.05:
                 self.state_start_time = current_time
                 self.state = "HOVER_TARGET"
+                print("HOVER TARGET")
 
         elif self.state == "HOVER_TARGET":
 
             target = self.targets[self.current_target]
             
             x_des = target + np.array([0.0, 0.0, 0.2])
-            q_des = (np.deg2rad(-60), np.deg2rad(110))
+            # q_des = (np.deg2rad(-60), np.deg2rad(110))
+            q_des = (self.null_q1, self.null_q2)
 
             # print(np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])))
 
             if current_time - self.state_start_time > 10.0:
-                self.current_target += 1
+                self.state = "ASCEND_OVER_TARGET"
+                print("ASCEND OVER TARGET")
 
-                if self.current_target >= 4:
-                    self.state = "GO_HOME"
-                    print("GO HOME")
-                else:
-                    self.state = "GO_TO_TARGET_HIGH"
-                    print("GO TO TARGET HIGH")
+        elif self.state == "ASCEND_OVER_TARGET":
+                target = self.targets[self.current_target]
+                
+                x_des = target + np.array([0.0, 0.0, 0.6])
+                q_des = (self.null_q1, self.null_q2)
+
+                if np.linalg.norm(x_des - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.05:
+                    self.current_target += 1
+                    if self.current_target >= 4:
+                        self.state = "GO_HOME"
+                        print("GO HOME")
+                    else:
+                        self.state = "GO_TO_TARGET_HIGH"
+                        print("GO TO TARGET ", self.current_target + 1,  "HIGH")
 
 
         elif self.state == "GO_HOME":
@@ -396,6 +429,18 @@ class MinimalPublisher(Node):
             q_des = (0, 0)
             self.null_q1 = 0
             self.null_q2 = 0
+            if np.linalg.norm(self.home_pos - np.array([self.x_ee, self.y_ee, self.z_ee])) < 0.05:
+                print("IM HOME NERDS")
+                print("TUCKING GIMBAL")
+                mode_msg = String()
+                mode_msg.data = "tuck"
+                self.gimbal_mode_pub.publish(mode_msg)
+
+
+
+        elif self.state == "HOME":
+            x_des = self.home_pos
+            q_des = (0, 0)
 
 
         #Calculate desired movement velocity
