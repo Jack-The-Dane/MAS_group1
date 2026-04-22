@@ -48,7 +48,7 @@ class MinimalSubscriber(Node):
 
         # plus 2047 to center in the middle
         # times 360/4096 to convert degress to positon bc 4096 [pulse/rev]
-        joint1 = int(1790 + joint1 * 4096 / 360)  # motor 1
+        joint1 = int(1900 + joint1 * 4096 / 360)  # motor 1
         joint2 = int(1170 + joint2 * 4096 / 360) # motor 2
 
         #limit values to what it accepts
