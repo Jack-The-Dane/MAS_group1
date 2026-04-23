@@ -19,9 +19,9 @@ offsets = {
 def deg_to_tick(deg: float, offset: int):
     return int(deg/DEG_PER_TIC + offset)
 
-def almost_equal(a: list[int], b: list[int], delta = 50):
+def almost_equal(a: list[int], b: list[int], delta = 200):
     for i in range(len(a)):
-        if abs(a[i]-b[i] > delta):
+        if abs(a[i]-b[i]) > delta:
             return False
     return True
 
@@ -96,6 +96,7 @@ class MinimalSubscriber(Node):
             case ArmStates.TUCK_ARM:
                 self.motors.set_position(TuckCommands.LIFT_ARM)
                 current_pos = self.motors.get_position()
+                print(current_pos)
                 if almost_equal(current_pos, TuckCommands.LIFT_ARM):
                     new_state = ArmStates.TUCK_GIMBAL
             
