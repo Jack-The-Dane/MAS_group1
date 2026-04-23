@@ -6,11 +6,13 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import Float64MultiArray
 
-
+DEG_PER_TIC = 360/4096
 
 class MinimalSubscriber(Node):
 
     def __init__(self):
+        self.publisher_dyna_angle = self.create_publisher(Float64MultiArray, 'arm_controller/dyna_angle', 10)
+
         super().__init__('control_motors')
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -39,6 +41,16 @@ class MinimalSubscriber(Node):
 
         self.current_targets = [1200, 1900, 2048, 2048]
 
+
+
+    def timer_callback(self):
+        msg = Float64MultiArray()
+        motor_tics = self.motors.get_position()
+
+        for i in range(3):
+            msg.data[i] = motor_tics[0][2] * DEG_PER_TIC  # Multiply with degree per tics to convert to degrees
+
+        self.publisher_dyna_angle.publish(msg)
 
 
     def armController_callback(self, msg):
