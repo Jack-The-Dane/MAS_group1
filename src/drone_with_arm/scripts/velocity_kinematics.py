@@ -56,6 +56,9 @@ class MinimalPublisher(Node):
         self.y_ee = 0.0
         self.z_ee = 0.0
 
+        # # Current Motor positions
+        # self.motor_j1 = 0
+        # self.motor_j2 = 0
 
         #State machine
         self.mode = ""
@@ -97,6 +100,13 @@ class MinimalPublisher(Node):
             self.mode_callback,
             10
         )
+
+        # self.motor_sub = self.create_subscription(
+        #     Float64MultiArray,
+        #     '/arm_controller/dyna_angle',
+        #     self.dyna_angle_callback,
+        #     10
+        # )
 
         self.target_subscription = self.create_subscription(
             Odometry,
@@ -181,6 +191,10 @@ class MinimalPublisher(Node):
             msg.pose.pose.position.y,
             msg.pose.pose.position.z
         ])
+
+    # def dyna_angle_callback(self, msg: Float64MultiArray):
+    #     self.motor_j1 = msg.data[1]
+    #     self.motor_j2 = msg.data[0]
 
 
     def mode_callback(self, msg: State):

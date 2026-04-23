@@ -11,7 +11,7 @@ DEG_PER_TIC = 360/4096
 class MinimalSubscriber(Node):
 
     def __init__(self):
-        self.publisher_dyna_angle = self.create_publisher(Float64MultiArray, 'arm_controller/dyna_angle', 10)
+        # self.publisher_dyna_angle = self.create_publisher(Float64MultiArray, 'arm_controller/dyna_angle', 10)
 
         super().__init__('control_motors')
         qos_profile = QoSProfile(
@@ -36,7 +36,7 @@ class MinimalSubscriber(Node):
         )
 
         # communication_port = "/dev/U2D2"
-        communication_port = "/dev/ttyUSB0"
+        communication_port = "/dev/ttyUSB1"
         self.motors = ControlMotors([1,2,3,4], communication_port)
 
         self.current_targets = [1200, 1900, 2048, 2048]
@@ -46,14 +46,14 @@ class MinimalSubscriber(Node):
 
 
 
-    def timer_callback(self):
-        msg = Float64MultiArray()
-        motor_tics = self.motors.get_position()
+    # def timer_callback(self):
+    #     msg = Float64MultiArray()
+    #     motor_tics = self.motors.get_position()
 
-        for i in range(3):
-            msg.data[i] = motor_tics[0][2] * DEG_PER_TIC  # Multiply with degree per tics to convert to degrees
+    #     for i in range(3):
+    #         msg.data[i] = motor_tics[0][2] * DEG_PER_TIC  # Multiply with degree per tics to convert to degrees
 
-        self.publisher_dyna_angle.publish(msg)
+    #     self.publisher_dyna_angle.publish(msg)
 
 
     def armController_callback(self, msg):
