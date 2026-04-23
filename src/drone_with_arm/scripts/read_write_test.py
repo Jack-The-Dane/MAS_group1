@@ -9,14 +9,26 @@ class ControlMotors:
         self.portHandler = PortHandler(port)
         self.packetHandler = PacketHandler(2.0) #Protocol 2.0
 
-        #Constants needed
+        # address for setting posiiton
         self.goal_position_address = 116
+
+        #adress for reading position
         self.present_position_address = 132
+
+        # Address for enabling motor
         self.torque_on_address = 64
+
+        # Configure position mode
         self.operating_mode_address = 11
         self.extended_position_mode = 4
+
+        # For bulk read/write (4 bc 4motors)
         self.goal_position_length = 4
         self.present_position_length = 4
+
+        #velocity limit
+        self.profile_velocity_address = 112
+        self.max_velocity_limit = 20
 
         self.groupBulkWrite = GroupBulkWrite(self.portHandler, self.packetHandler)
         self.groupBulkRead = GroupBulkRead(self.portHandler, self.packetHandler)
@@ -51,6 +63,19 @@ class ControlMotors:
                 print("%s" % self.packetHandler.getRxPacketError(error))
             else:
                 print("Dynamixel motor", motor_id, "is set to extended position mode")
+
+            communication_result, error = self.packetHandler.write4ByteTxRx(
+                self.portHandler,
+                motor_id,
+                self.profile_velocity_address,
+                self.max_velocity_limit,
+            )
+            if communication_result != COMM_SUCCESS:
+                print("%s" % self.packetHandler.getTxRxResult(communication_result))
+            elif error != 0:
+                print("%s" % self.packetHandler.getRxPacketError(error))
+            else:
+                print("Dynamixel motor", motor_id, "is set maximum velocity ", self.max_velocity_limit)
 
 
         #Enable torque / aka turn on movement
