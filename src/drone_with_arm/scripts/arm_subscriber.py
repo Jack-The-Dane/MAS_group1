@@ -34,7 +34,7 @@ class MinimalSubscriber(Node):
         )
 
         # communication_port = "/dev/U2D2"
-        communication_port = "/dev/ttyUSB1"
+        communication_port = "/dev/ttyUSB0"
         self.motors = ControlMotors([1,2,3,4], communication_port)
 
         self.current_targets = [1200, 1900, 2048, 2048]

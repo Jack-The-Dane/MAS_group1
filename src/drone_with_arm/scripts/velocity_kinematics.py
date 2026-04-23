@@ -208,6 +208,7 @@ class MinimalPublisher(Node):
 
         # --- Pure repulsion in position ---
         repulsion = np.zeros(3)
+        
 
         for i, target in enumerate(self.targets):
             if i == current_target or i == current_target -1:
@@ -223,6 +224,8 @@ class MinimalPublisher(Node):
                 repulsion += k_repulsion * direction
                 print("dist: ", dist)
                 print("repulsion: ", repulsion)
+                k_null_joints = 10
+               
 
         # --- Yaw + joint attraction ---
         error_yaw = des_yaw - self.yaw
@@ -319,6 +322,7 @@ class MinimalPublisher(Node):
         # print("Fix link1 rotates around center!!!!!!!!")
         # print("mode", self.mode)
         # print("armed", self.armed)
+        current_time = self.get_clock().now().nanoseconds * 1e-9
 
         #State machine controlling the drone
         if self.mode != "OFFBOARD" or not self.armed:
@@ -336,16 +340,17 @@ class MinimalPublisher(Node):
             mode_msg = String()
             mode_msg.data = "tuck"
             self.gimbal_mode_pub.publish(mode_msg)
+
+            self.state_start_time = current_time
             return
         # print("im here")
 
-        current_time = self.get_clock().now().nanoseconds * 1e-9
 
         if self.state == "WAIT":
             x_des = self.home_pos
-            q_des = (np.deg2rad(90), 0)
+            q_des = (np.deg2rad(-90), 0)
             
-            if current_time - self.state_start_time > 5.0:   # wait 10 seconds
+            if current_time - self.state_start_time > 5.0:   # wait 5 seconds
                 self.state = "UNTUCK_GIMBAL"
                 self.state_start_time = current_time
                 print("UNTUCK GIMBAL")
@@ -357,9 +362,10 @@ class MinimalPublisher(Node):
 
 
             x_des = self.home_pos
-            q_des = (np.deg2rad(90),0)
+            q_des = (np.deg2rad(-90),0)
 
             if current_time - self.state_start_time > 5.0:
+                self.state_start_time = current_time
                 self.state = "UNTUCK_ARM"
                 print("UNTUCK ARM")
 
@@ -444,7 +450,7 @@ class MinimalPublisher(Node):
 
         elif self.state == "TUCK_ARM":
             x_des = self.home_pos
-            q_des = (90, 0)
+            q_des = (np.deg2rad(-90), 0)
 
             if current_time - self.state_start_time > 5.0:
                 self.state = "TUCK_GIMBAL"
@@ -457,7 +463,7 @@ class MinimalPublisher(Node):
             self.gimbal_mode_pub.publish(mode_msg)
 
             x_des = self.home_pos
-            q_des = (np.deg2rad(90),0)
+            q_des = (np.deg2rad(-90),0)
 
             if current_time - self.state_start_time > 5.0:
                 self.state = "HOME"
@@ -465,7 +471,7 @@ class MinimalPublisher(Node):
 
         elif self.state == "HOME":
             x_des = self.home_pos
-            q_des = (90, 0)
+            q_des = (np.deg2rad(-90), 0)
 
 
         #Calculate desired movement velocity
