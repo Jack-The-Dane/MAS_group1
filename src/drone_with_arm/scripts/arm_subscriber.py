@@ -41,6 +41,9 @@ class MinimalSubscriber(Node):
 
         self.current_targets = [1200, 1900, 2048, 2048]
 
+        self.dt = 0.02
+        self.timer = self.create_timer(self.dt, self.timer_callback)
+
 
 
     def timer_callback(self):
