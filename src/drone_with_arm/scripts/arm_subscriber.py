@@ -96,7 +96,6 @@ class MinimalSubscriber(Node):
             case ArmStates.TUCK_ARM:
                 self.motors.set_position(TuckCommands.LIFT_ARM)
                 current_pos = self.motors.get_position()
-                print(current_pos)
                 if almost_equal(current_pos, TuckCommands.LIFT_ARM):
                     new_state = ArmStates.TUCK_GIMBAL
             
