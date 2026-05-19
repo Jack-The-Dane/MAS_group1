@@ -68,7 +68,7 @@ class MinimalPublisher(Node):
 
 
         # Home positions, targets and current target
-        self.home_pos = np.array([0.0, 0.0, 3.5])
+        self.home_pos = np.array([0.0, 0.0, 2.5])
         self.targets = [None, None, None, None]
         self.current_target = 0
 
@@ -343,7 +343,7 @@ class MinimalPublisher(Node):
             msg = PoseStamped()
             msg.pose.position.x = 0.0
             msg.pose.position.y = 0.0
-            msg.pose.position.z = 0.0
+            msg.pose.position.z = 2.5
             self.pos_publisher_.publish(msg)
             # print("0,0,0")
             msg = Float64MultiArray()
