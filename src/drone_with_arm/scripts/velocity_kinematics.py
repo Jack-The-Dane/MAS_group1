@@ -35,7 +35,7 @@ class MinimalPublisher(Node):
         # self.q1 = np.deg2rad(-70)
         # self.q2 = np.deg2rad(100)
         self.q1 = np.deg2rad(-90) # initial joint angles
-        self.q2 = np.deg2rad(0) # init 
+        self.q2 = np.deg2rad(0) # init
 
         self.null_q1 = np.deg2rad(-60) # target/nullspace joint angles
         self.null_q2 = np.deg2rad(30) 
@@ -297,10 +297,24 @@ class MinimalPublisher(Node):
     
 
     def publish_q_dot(self, q_dot):
-        self.q1 += q_dot[4] * self.dt
-        self.q2 += q_dot[5] * self.dt
+        q1_sat = self.q1 + q_dot[4] * self.dt
+        q2_sat = self.q2 + q_dot[5] * self.dt
+        # self.q1 + q_dot[4] * self.dt
+        # self.q2 + q_dot[5] * self.dt
+        if q1_sat < np.deg2rad(-90):
+            q1_sat = np.deg2rad(-90)
+        elif q1_sat > np.deg2rad(90):
+            q1_sat = np.deg2rad(90)
+
+        q2_lim = 90 - abs(q1_sat)
+        sign = 1 if q1_sat >= 0 else -1
+        q2_sat = min(q2_sat, q2_lim*sign)
+
+        self.q1 = q1_sat
+        self.q2 = q2_sat
         
         msg = Float64MultiArray()
+
         msg.data = [self.q1, self.q2] # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         # print("q1: ", round(self.q1,4))
         # print("q2: ", round(self.q2,4), "\n")
