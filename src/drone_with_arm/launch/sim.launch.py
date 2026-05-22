@@ -131,11 +131,29 @@ def generate_launch_description():
     )
 
 
-    def spawn_target(name):
-        x = random.uniform(-4, 4)
-        y = random.uniform(-4, 4)
-        z = random.uniform(-2.0, -0.5)
+    # def spawn_target(name):
+    #     x = random.uniform(-4, 4)
+    #     y = random.uniform(-4, 4)
+    #     z = random.uniform(-2.0, -0.5)
 
+    #     return Node(
+    #         package="gazebo_ros",
+    #         executable="spawn_entity.py",
+    #         arguments=[
+    #             "-entity", name,
+    #             "-database", "target_generic",
+    #             "-x", str(x),
+    #             "-y", str(y),
+    #             "-z", str(z),
+    #             "-robot_namespace", name
+    #         ],
+    #         output="screen",
+    #     )
+
+    # # Create multiple target spawners
+    # targets = [spawn_target(f"target{i}") for i in range(1, 5)]
+
+    def spawn_target(name, x, y, z):
         return Node(
             package="gazebo_ros",
             executable="spawn_entity.py",
@@ -145,13 +163,25 @@ def generate_launch_description():
                 "-x", str(x),
                 "-y", str(y),
                 "-z", str(z),
-                "-robot_namespace", name
+                "-robot_namespace", name,
             ],
             output="screen",
         )
 
-    # Create multiple target spawners
-    targets = [spawn_target(f"target{i}") for i in range(1, 5)]
+
+    # Fixed target positions: (x, y, z)
+    target_positions = [
+        (2.5, 2.5, -1.0),
+        (-2.5, 2.5, -1.2),
+        (0.0, 2.6, -0.7),
+        (-2.0, -2.0, -1.5),
+    ]
+
+    # Create target spawners
+    targets = [
+        spawn_target(f"target{i}", x, y, z)
+        for i, (x, y, z) in enumerate(target_positions, start=1)
+    ]
 
     return LaunchDescription([
         gazebo,
